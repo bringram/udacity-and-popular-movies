@@ -83,7 +83,7 @@ public class MovieDetailActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra(Movie.MOVIE_INTENT_KEY)) {
-            Movie movie = (Movie) intent.getSerializableExtra(Movie.MOVIE_INTENT_KEY);
+            Movie movie = intent.getParcelableExtra(Movie.MOVIE_INTENT_KEY);
             setTitle(movie.getTitle());
 
             try {
