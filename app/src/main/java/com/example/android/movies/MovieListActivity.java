@@ -45,8 +45,12 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Parcelable;
+import android.support.annotation.Nullable;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -67,6 +71,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -74,11 +79,13 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class MovieListActivity extends AppCompatActivity
-        implements MovieListAdapter.MovieListAdapterOnClickHandler {
+        implements MovieListAdapter.MovieListAdapterOnClickHandler,
+        LoaderManager.LoaderCallbacks<List<Movie>> {
 
     private static final String LOG_TAG = MovieListActivity.class.getSimpleName();
 
-    private ApiRequestType currentApiRequestType = ApiRequestType.POPULAR;
+    private static final String API_CALL_TYPE_EXTRA = "query_url";
+    private static final int MOVIE_API_LOADER = 32;
 
     @BindView(R.id.rv_movie_list)
     RecyclerView recyclerView;
@@ -89,7 +96,11 @@ public class MovieListActivity extends AppCompatActivity
     @BindView(R.id.pb_loading)
     ProgressBar loadingIndicator;
 
+    private ApiRequestType currentApiRequestType;
     private MovieListAdapter movieListAdapter;
+
+    ApiRequestType cachedRequestType = null;
+    List<Movie> cachedMovies;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,7 +115,9 @@ public class MovieListActivity extends AppCompatActivity
                     .getString(getResources().getString(R.string.current_api_request_type_key)));
         }
 
-        fetchMovies();
+        if (currentApiRequestType == null) {
+            currentApiRequestType = ApiRequestType.POPULAR;
+        }
 
         recyclerView.setHasFixedSize(true);
 
@@ -121,19 +134,44 @@ public class MovieListActivity extends AppCompatActivity
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        fetchMovies();
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(getResources().getString(R.string.current_api_request_type_key),
                 currentApiRequestType.name());
+        outState.putString(getResources().getString(R.string.cached_api_request_type_key),
+                cachedRequestType.name());
+        outState.putParcelableArrayList(getResources().getString(R.string.cached_movies_key),
+                (ArrayList<? extends Parcelable>) cachedMovies);
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        if (savedInstanceState != null && savedInstanceState.containsKey(getResources()
-                .getString(R.string.current_api_request_type_key))) {
-            currentApiRequestType = ApiRequestType.valueOf(savedInstanceState
-                    .getString(getResources().getString(R.string.current_api_request_type_key)));
+        
+        if (savedInstanceState != null) {
+            if (savedInstanceState.containsKey(getResources()
+                    .getString(R.string.current_api_request_type_key))) {
+                currentApiRequestType = ApiRequestType.valueOf(savedInstanceState
+                        .getString(getResources().getString(R.string.current_api_request_type_key)));
+            }
+
+            if (savedInstanceState.containsKey(getResources()
+                    .getString(R.string.cached_api_request_type_key))) {
+                cachedRequestType = ApiRequestType.valueOf(savedInstanceState
+                        .getString(getResources().getString(R.string.cached_api_request_type_key)));
+            }
+
+            if (savedInstanceState.containsKey(getResources()
+                    .getString(R.string.cached_movies_key))) {
+                cachedMovies = savedInstanceState.getParcelableArrayList(getResources()
+                        .getString(R.string.cached_movies_key));
+            }
         }
     }
 
@@ -156,10 +194,10 @@ public class MovieListActivity extends AppCompatActivity
 
         if (id == R.id.menu_sort_popular) {
             currentApiRequestType = ApiRequestType.POPULAR;
-            new FetchMovieTask().execute(ApiRequestType.POPULAR);
+            fetchMovies();
         } else if (id == R.id.menu_sort_top_rated) {
             currentApiRequestType = ApiRequestType.TOP_RATED;
-            new FetchMovieTask().execute(ApiRequestType.TOP_RATED);
+            fetchMovies();
         }
 
         changeTitle(currentApiRequestType);
@@ -174,7 +212,17 @@ public class MovieListActivity extends AppCompatActivity
 
         // Perform the request if the network is available & connected
         if (networkInfo != null && networkInfo.isConnected()) {
-            new FetchMovieTask().execute(currentApiRequestType);
+            Bundle bundle = new Bundle();
+            bundle.putString(API_CALL_TYPE_EXTRA, currentApiRequestType.name());
+
+            LoaderManager loaderManager = getSupportLoaderManager();
+            Loader<String> githubSearchLoader = loaderManager.getLoader(MOVIE_API_LOADER);
+            if (githubSearchLoader == null) {
+                loaderManager.initLoader(MOVIE_API_LOADER, bundle, this);
+            } else {
+                loaderManager.restartLoader(MOVIE_API_LOADER, bundle, this);
+            }
+
             changeTitle(currentApiRequestType);
             showMovieDataView();
         } else {
@@ -204,67 +252,89 @@ public class MovieListActivity extends AppCompatActivity
         recyclerView.setVisibility(View.INVISIBLE);
     }
 
-    class FetchMovieTask extends AsyncTask<ApiRequestType, Void, List<Movie>> {
+    @Override
+    public Loader<List<Movie>> onCreateLoader(int id, final Bundle args) {
+        return new AsyncTaskLoader<List<Movie>>(this) {
+            private final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        private final String LOG_TAG = FetchMovieTask.class.getSimpleName();
+            @Override
+            protected void onStartLoading() {
+                if (args == null) {
+                    return;
+                }
 
-        private final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            loadingIndicator.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected List<Movie> doInBackground(ApiRequestType... requestTypes) {
-            if (requestTypes.length == 0) {
-                return null;
-            }
-
-            ApiRequestType requestType = requestTypes[0];
-            URL requestUrl = NetworkUtils.buildUrl(requestType.getPath());
-
-            String jsonResponse;
-            try {
-                jsonResponse = NetworkUtils.getResponseFromHttpUrl(requestUrl);
-                Log.v(LOG_TAG, "JSON Results: " + jsonResponse);
-            } catch (Exception e) {
-                Log.w(LOG_TAG, "Exception encountered retrieving movies: "
-                        + e.getMessage(), e);
-                return null;
-            }
-
-            if (jsonResponse != null) {
-                try {
-                    JsonNode rootNode = OBJECT_MAPPER.readTree(jsonResponse);
-                    JsonNode resultsNode = rootNode.at("/results");
-                    List<Movie> movies = OBJECT_MAPPER.readValue(resultsNode.toString(),
-                            new TypeReference<List<Movie>>() {
-                            });
-                    Log.d(LOG_TAG, "Parsed " + movies.size() + " movies from JSON results");
-                    return movies;
-                } catch (IOException e) {
-                    Log.w(LOG_TAG, "Exception encountered parsing JSON results: "
-                            + e.getMessage(), e);
-                    return null;
+                ApiRequestType bundledRequestType = ApiRequestType.valueOf(
+                        args.getString(API_CALL_TYPE_EXTRA));
+                if (cachedRequestType != null && cachedRequestType.equals(bundledRequestType)
+                        && cachedMovies != null) {
+                    deliverResult(cachedMovies);
+                } else {
+                    cachedRequestType = bundledRequestType;
+                    loadingIndicator.setVisibility(View.VISIBLE);
+                    forceLoad();
                 }
             }
 
-            return null;
-        }
+            @Override
+            public List<Movie> loadInBackground() {
+                if (cachedRequestType == null) {
+                    return null;
+                }
 
-        @Override
-        protected void onPostExecute(List<Movie> movies) {
-            loadingIndicator.setVisibility(View.INVISIBLE);
+                String jsonResponse;
+                try {
+                    URL url = NetworkUtils.buildUrl(cachedRequestType.getPath());
+                    jsonResponse = NetworkUtils.getResponseFromHttpUrl(url);
+                    Log.v(LOG_TAG, "JSON Results: " + jsonResponse);
+                } catch (Exception e) {
+                    Log.w(LOG_TAG, "Exception encountered retrieving movies: "
+                            + e.getMessage(), e);
+                    return null;
+                }
 
-            if (movies != null && movies.size() > 0) {
-                showMovieDataView();
-                movieListAdapter.setMovies(movies);
-            } else {
-                showErrorMessage("No movies were found");
+                if (jsonResponse != null) {
+                    try {
+                        JsonNode rootNode = OBJECT_MAPPER.readTree(jsonResponse);
+                        JsonNode resultsNode = rootNode.at("/results");
+                        List<Movie> movies = OBJECT_MAPPER.readValue(resultsNode.toString(),
+                                new TypeReference<List<Movie>>() {
+                                });
+                        Log.d(LOG_TAG, "Parsed " + movies.size() + " movies from JSON results");
+                        return movies;
+                    } catch (IOException e) {
+                        Log.w(LOG_TAG, "Exception encountered parsing JSON results: "
+                                + e.getMessage(), e);
+                        return null;
+                    }
+                }
+
+                return null;
             }
+
+            @Override
+            public void deliverResult(@Nullable List<Movie> movies) {
+                cachedMovies = movies;
+                super.deliverResult(movies);
+            }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(Loader<List<Movie>> loader, List<Movie> movies) {
+        loadingIndicator.setVisibility(View.INVISIBLE);
+
+        if (movies != null && movies.size() > 0) {
+            showMovieDataView();
+            movieListAdapter.setMovies(movies);
+        } else {
+            showErrorMessage("No movies were found");
         }
     }
+
+    @Override
+    public void onLoaderReset(Loader<List<Movie>> loader) {
+
+    }
+
 }

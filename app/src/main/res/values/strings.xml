@@ -52,6 +52,10 @@
     <string name="current_api_request_type_key" translatable="false">
         current_api_request_type
     </string>
+    <string name="cached_api_request_type_key" translatable="false">
+        cached_api_request_type
+    </string>
+    <string name="cached_movies_key" translatable="false">cache_movies</string>
 
     <string name="no_network_available_error">
         Network currently unavailable. Please try again later.
