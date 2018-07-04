@@ -40,11 +40,14 @@
 
 package com.example.android.movies.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 
-public class Movie implements Serializable {
+public class Movie implements Parcelable {
 
     public static final String MOVIE_INTENT_KEY = "movieData";
 
@@ -71,6 +74,21 @@ public class Movie implements Serializable {
 
     @JsonProperty("backdrop_path")
     private String backdropPath;
+
+    public Movie() {
+
+    }
+
+    protected Movie(Parcel in) {
+        id = in.readLong();
+        title = in.readString();
+        originalTitle = in.readString();
+        overview = in.readString();
+        releaseDate = in.readString();
+        voteAverage = in.readFloat();
+        posterPath = in.readString();
+        backdropPath = in.readString();
+    }
 
     public long getId() {
         return id;
@@ -134,5 +152,34 @@ public class Movie implements Serializable {
 
     public void setBackdropPath(String backdropPath) {
         this.backdropPath = backdropPath;
+    }
+
+    public static final Creator<Movie> CREATOR = new Creator<Movie>() {
+        @Override
+        public Movie createFromParcel(Parcel in) {
+            return new Movie(in);
+        }
+
+        @Override
+        public Movie[] newArray(int size) {
+            return new Movie[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(id);
+        dest.writeString(title);
+        dest.writeString(originalTitle);
+        dest.writeString(overview);
+        dest.writeString(releaseDate);
+        dest.writeFloat(voteAverage);
+        dest.writeString(posterPath);
+        dest.writeString(backdropPath);
     }
 }
