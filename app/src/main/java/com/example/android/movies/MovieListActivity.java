@@ -284,7 +284,7 @@ public class MovieListActivity extends AppCompatActivity
 
                 String jsonResponse;
                 try {
-                    URL url = NetworkUtils.buildUrl(cachedRequestType.getPath());
+                    URL url = NetworkUtils.buildUrl(cachedRequestType);
                     jsonResponse = NetworkUtils.getResponseFromHttpUrl(url);
                     Log.v(LOG_TAG, "JSON Results: " + jsonResponse);
                 } catch (Exception e) {

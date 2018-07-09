@@ -62,19 +62,20 @@ public class NetworkUtils {
     private static final String BASE_URL = "http://api.themoviedb.org/3/movie/";
     private static final String API_KEY_PARAM = "api_key";
 
-    public static URL buildUrl(String requestType) {
-        Uri builtUri = Uri.parse(BASE_URL).buildUpon().appendPath(requestType)
+    public static URL buildUrl(ApiRequestType requestType) {
+        Uri builtUri = Uri.parse(BASE_URL).buildUpon().appendPath(requestType.getPath())
                 .appendQueryParameter(API_KEY_PARAM, API_KEY).build();
 
-        URL url = null;
-        try {
-            url = new URL(builtUri.toString());
-        } catch (MalformedURLException e) {
-            Log.w(LOG_TAG, "Unable to build URL: " + e.getMessage(), e);
-        }
+        return buildUrlFromUri(builtUri);
+    }
 
-        Log.v(LOG_TAG, "Built URL: " + url);
-        return url;
+    public static URL buildDetailUrl(ApiDetailRequestType requestType, Long movieId) {
+        Uri builtUri = Uri.parse(BASE_URL).buildUpon()
+                .appendPath(movieId.toString())
+                .appendPath(requestType.getPath())
+                .appendQueryParameter(API_KEY_PARAM, API_KEY).build();
+
+        return buildUrlFromUri(builtUri);
     }
 
     public static String getResponseFromHttpUrl(URL url) throws IOException {
@@ -94,5 +95,17 @@ public class NetworkUtils {
         } finally {
             urlConnection.disconnect();
         }
+    }
+
+    private static URL buildUrlFromUri(Uri uri) {
+        URL url = null;
+        try {
+            url = new URL(uri.toString());
+        } catch (MalformedURLException e) {
+            Log.w(LOG_TAG, "Unable to build URL: " + e.getMessage(), e);
+        }
+
+        Log.v(LOG_TAG, "Built URL: " + url);
+        return url;
     }
 }
