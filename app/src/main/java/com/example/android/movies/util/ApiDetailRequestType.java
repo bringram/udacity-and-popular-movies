@@ -42,7 +42,8 @@ package com.example.android.movies.util;
 
 public enum ApiDetailRequestType {
 
-    USER_REVIEWS("reviews");
+    USER_REVIEWS("reviews"),
+    VIDEOS("videos");
 
     private final String path;
 

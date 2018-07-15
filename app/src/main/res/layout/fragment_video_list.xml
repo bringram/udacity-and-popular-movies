@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ PROJECT LICENSE
   ~
@@ -38,38 +39,33 @@
   ~
   -->
 
-<resources>
-    <string name="app_name">Popular Movies</string>
-    <string name="base_image_url" translatable="false">http://image.tmdb.org/t/p/w342</string>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
-    <string name="menu_top_rated">Top Rated</string>
-    <string name="menu_popular">Popular</string>
-    <string name="sort_popular_title">Popular Movies</string>
-    <string name="sort_top_rated_title">Top Rated Movies</string>
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/rv_video_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="8dp"
+        tools:context=".MovieDetailActivity" />
 
-    <string name="movie_poster_content_description">Movie poster</string>
+    <TextView
+        android:id="@+id/tv_video_error_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:padding="16dp"
+        android:textSize="16sp"
+        android:visibility="invisible" />
 
-    <string name="current_api_request_type_key" translatable="false">
-        current_api_request_type
-    </string>
-    <string name="cached_api_request_type_key" translatable="false">
-        cached_api_request_type
-    </string>
-    <string name="cached_movies_key" translatable="false">cache_movies</string>
+    <ProgressBar
+        android:id="@+id/pb_video_loading"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_gravity="center"
+        android:visibility="invisible"/>
 
-    <string name="no_network_available_error">
-        Network currently unavailable. Please try again later.
-    </string>
-
-    <string name="original_title_label">Original Title</string>
-    <string name="release_date_label">Release Date</string>
-
-    <string name="api_date_format" translatable="false">yyyy-MM-dd</string>
-    <string name="display_date_format" translatable="false">MMMM d, yyyy</string>
-    <string name="review_author_label">Author:</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="review_header">User Reviews</string>
-    <string name="video_header">Videos</string>
-</resources>
+</FrameLayout>
