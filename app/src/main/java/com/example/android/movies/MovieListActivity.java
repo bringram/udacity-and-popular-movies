@@ -40,6 +40,9 @@
 
 package com.example.android.movies;
 
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -61,6 +64,8 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.example.android.movies.data.FavouriteMovieViewModel;
+import com.example.android.movies.data.MovieDatabase;
 import com.example.android.movies.model.Movie;
 import com.example.android.movies.util.ApiRequestType;
 import com.example.android.movies.util.NetworkUtils;
@@ -102,10 +107,14 @@ public class MovieListActivity extends AppCompatActivity
     ApiRequestType cachedRequestType = null;
     List<Movie> cachedMovies;
 
+    private MovieDatabase movieDb;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movie_list);
+
+        movieDb = MovieDatabase.getInstance(getApplicationContext());
 
         ButterKnife.bind(this);
 
@@ -116,8 +125,11 @@ public class MovieListActivity extends AppCompatActivity
         }
 
         if (currentApiRequestType == null) {
-            currentApiRequestType = ApiRequestType.POPULAR;
+            currentApiRequestType = ApiRequestType.FAVOURITE;
+            changeTitle(currentApiRequestType);
         }
+
+        cachedRequestType = currentApiRequestType;
 
         recyclerView.setHasFixedSize(true);
 
@@ -136,7 +148,8 @@ public class MovieListActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        fetchMovies();
+        fetchMoviesFromDatabase();
+        fetchMoviesFromApi();
     }
 
     @Override
@@ -172,6 +185,8 @@ public class MovieListActivity extends AppCompatActivity
                 cachedMovies = savedInstanceState.getParcelableArrayList(getResources()
                         .getString(R.string.cached_movies_key));
             }
+
+            changeTitle(currentApiRequestType);
         }
     }
 
@@ -194,10 +209,13 @@ public class MovieListActivity extends AppCompatActivity
 
         if (id == R.id.menu_sort_popular) {
             currentApiRequestType = ApiRequestType.POPULAR;
-            fetchMovies();
+            fetchMoviesFromApi();
         } else if (id == R.id.menu_sort_top_rated) {
             currentApiRequestType = ApiRequestType.TOP_RATED;
-            fetchMovies();
+            fetchMoviesFromApi();
+        } else if (id == R.id.menu_sort_favourite) {
+            currentApiRequestType = ApiRequestType.FAVOURITE;
+            fetchMoviesFromDatabase();
         }
 
         changeTitle(currentApiRequestType);
@@ -205,30 +223,50 @@ public class MovieListActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void fetchMovies() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = Objects.requireNonNull(connectivityManager).getActiveNetworkInfo();
+    private void fetchMoviesFromDatabase() {
+        FavouriteMovieViewModel viewModel = ViewModelProviders.of(this)
+                .get(FavouriteMovieViewModel.class);
 
-        // Perform the request if the network is available & connected
-        if (networkInfo != null && networkInfo.isConnected()) {
-            Bundle bundle = new Bundle();
-            bundle.putString(API_CALL_TYPE_EXTRA, currentApiRequestType.name());
+        viewModel.getMovieData().observe(this, new Observer<List<Movie>>() {
 
-            LoaderManager loaderManager = getSupportLoaderManager();
-            Loader<String> githubSearchLoader = loaderManager.getLoader(MOVIE_API_LOADER);
-            if (githubSearchLoader == null) {
-                loaderManager.initLoader(MOVIE_API_LOADER, bundle, this);
-            } else {
-                loaderManager.restartLoader(MOVIE_API_LOADER, bundle, this);
+            @Override
+            public void onChanged(@Nullable List<Movie> movies) {
+                Log.d(LOG_TAG, "Updating list of favourite movies from LiveData in ViewModel");
+                if (currentApiRequestType.equals(ApiRequestType.FAVOURITE)) {
+                    movieListAdapter.setMovies(movies);
+                    updateInterface(movies);
+                }
             }
 
-            changeTitle(currentApiRequestType);
-            showMovieDataView();
-        } else {
-            String error = getResources().getString(R.string.no_network_available_error);
-            Log.w(LOG_TAG, error);
-            showErrorMessage(error);
+        });
+    }
+
+    private void fetchMoviesFromApi() {
+        if (!currentApiRequestType.equals(ApiRequestType.FAVOURITE)) {
+            ConnectivityManager connectivityManager =
+                    (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo networkInfo = Objects.requireNonNull(connectivityManager).getActiveNetworkInfo();
+
+            // Perform the request if the network is available & connected
+            if (networkInfo != null && networkInfo.isConnected()) {
+                Bundle bundle = new Bundle();
+                bundle.putString(API_CALL_TYPE_EXTRA, currentApiRequestType.name());
+
+                LoaderManager loaderManager = getSupportLoaderManager();
+                Loader<String> githubSearchLoader = loaderManager.getLoader(MOVIE_API_LOADER);
+                if (githubSearchLoader == null) {
+                    loaderManager.initLoader(MOVIE_API_LOADER, bundle, this);
+                } else {
+                    loaderManager.restartLoader(MOVIE_API_LOADER, bundle, this);
+                }
+
+                changeTitle(currentApiRequestType);
+                showMovieDataView();
+            } else {
+                String error = getResources().getString(R.string.no_network_available_error);
+                Log.w(LOG_TAG, error);
+                showErrorMessage(error);
+            }
         }
     }
 
@@ -237,6 +275,8 @@ public class MovieListActivity extends AppCompatActivity
             setTitle(R.string.sort_popular_title);
         } else if (requestType.equals(ApiRequestType.TOP_RATED)) {
             setTitle(R.string.sort_top_rated_title);
+        } else if (requestType.equals(ApiRequestType.FAVOURITE)) {
+            setTitle(R.string.sort_favourite_title);
         }
     }
 
@@ -250,6 +290,15 @@ public class MovieListActivity extends AppCompatActivity
         errorMessage.setText(message);
         errorMessage.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.INVISIBLE);
+    }
+
+    private void updateInterface(List<Movie> movies) {
+        if (movies != null && movies.size() > 0) {
+            showMovieDataView();
+            movieListAdapter.setMovies(movies);
+        } else {
+            showErrorMessage("No movies were found");
+        }
     }
 
     @Override
@@ -323,13 +372,7 @@ public class MovieListActivity extends AppCompatActivity
     @Override
     public void onLoadFinished(Loader<List<Movie>> loader, List<Movie> movies) {
         loadingIndicator.setVisibility(View.INVISIBLE);
-
-        if (movies != null && movies.size() > 0) {
-            showMovieDataView();
-            movieListAdapter.setMovies(movies);
-        } else {
-            showErrorMessage("No movies were found");
-        }
+        updateInterface(movies);
     }
 
     @Override

@@ -42,6 +42,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/menu_sort_favourite"
+        android:title="@string/menu_favourite" />
+
+    <item
         android:id="@+id/menu_sort_popular"
         android:title="@string/menu_popular" />
 

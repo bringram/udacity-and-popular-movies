@@ -40,45 +40,73 @@
 
 package com.example.android.movies.model;
 
+import android.arch.persistence.room.ColumnInfo;
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.Ignore;
+import android.arch.persistence.room.PrimaryKey;
+import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.example.android.movies.data.BitmapConverter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.Serializable;
-
+@Entity(tableName = "movies")
 public class Movie implements Parcelable {
 
+    @Ignore
     public static final String MOVIE_INTENT_KEY = "movieData";
 
+    @PrimaryKey
     @JsonProperty("id")
     private long id;
 
     @JsonProperty("title")
     private String title;
 
+    @ColumnInfo(name = "original_title")
     @JsonProperty("original_title")
     private String originalTitle;
 
     @JsonProperty("overview")
     private String overview;
 
+    @ColumnInfo(name = "release_date")
     @JsonProperty("release_date")
     private String releaseDate;
 
+    @ColumnInfo(name = "vote_average")
     @JsonProperty("vote_average")
     private float voteAverage;
 
+    @Ignore
     @JsonProperty("poster_path")
     private String posterPath;
 
+    @Ignore
     @JsonProperty("backdrop_path")
     private String backdropPath;
 
-    public Movie() {
+    @ColumnInfo(name = "movie_poster_img")
+    private Bitmap posterBitmap;
 
+    @Ignore
+    public Movie() {
+        // This constructor is used for Jackson JSON parsing
     }
 
+    public Movie(long id, String title, String originalTitle, String overview, String releaseDate,
+                 float voteAverage, Bitmap posterBitmap) {
+        this.id = id;
+        this.title = title;
+        this.originalTitle = originalTitle;
+        this.overview = overview;
+        this.releaseDate = releaseDate;
+        this.voteAverage = voteAverage;
+        this.posterBitmap = posterBitmap;
+    }
+
+    @Ignore
     protected Movie(Parcel in) {
         id = in.readLong();
         title = in.readString();
@@ -88,6 +116,13 @@ public class Movie implements Parcelable {
         voteAverage = in.readFloat();
         posterPath = in.readString();
         backdropPath = in.readString();
+
+        int byteArraySize = in.readInt();
+        if (byteArraySize != 0) {
+            byte[] byteArray = new byte[byteArraySize];
+            in.readByteArray(byteArray);
+            posterBitmap = BitmapConverter.toBitmap(byteArray);
+        }
     }
 
     public long getId() {
@@ -154,6 +189,14 @@ public class Movie implements Parcelable {
         this.backdropPath = backdropPath;
     }
 
+    public Bitmap getPosterBitmap() {
+        return posterBitmap;
+    }
+
+    public void setPosterBitmap(Bitmap posterBitmap) {
+        this.posterBitmap = posterBitmap;
+    }
+
     public static final Creator<Movie> CREATOR = new Creator<Movie>() {
         @Override
         public Movie createFromParcel(Parcel in) {
@@ -181,5 +224,13 @@ public class Movie implements Parcelable {
         dest.writeFloat(voteAverage);
         dest.writeString(posterPath);
         dest.writeString(backdropPath);
+
+        if (posterBitmap != null) {
+            byte[] byteArray = BitmapConverter.toByteArray(posterBitmap);
+            dest.writeInt(byteArray.length);
+            dest.writeByteArray(byteArray);
+        } else {
+            dest.writeInt(0);
+        }
     }
 }

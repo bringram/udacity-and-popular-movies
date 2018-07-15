@@ -38,45 +38,34 @@
  *
  */
 
-apply plugin: 'com.android.application'
+package com.example.android.movies.data;
 
-android {
-    compileSdkVersion 27
-    defaultConfig {
-        applicationId "com.example.android.movies"
-        minSdkVersion 21
-        targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+import android.arch.persistence.room.TypeConverter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
-        buildConfigField("String", "API_KEY", API_KEY)
-    }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+import java.io.ByteArrayOutputStream;
+
+public class BitmapConverter {
+
+    @TypeConverter
+    public static Bitmap toBitmap(byte[] imageByteArray) {
+        if (imageByteArray != null) {
+            return BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.length);
         }
+
+        return null;
     }
-}
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'android.arch.lifecycle:extensions:1.1.1'
-    implementation 'android.arch.persistence.room:runtime:1.1.1'
-    implementation 'com.android.support:appcompat-v7:27.1.1'
-    implementation 'com.android.support:recyclerview-v7:27.1.1'
-    implementation 'com.squareup.picasso:picasso:2.71828'
-    implementation 'com.jakewharton:butterknife:8.8.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.5'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.2'
-    implementation 'com.android.support:support-v4:27.1.1'
-    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
-    annotationProcessor 'android.arch.persistence.room:compiler:1.1.1'
+    @TypeConverter
+    public static byte[] toByteArray(Bitmap bitmap) {
+        if (bitmap != null) {
+            ByteArrayOutputStream blob = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, blob);
+            return blob.toByteArray();
+        }
 
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+        return null;
+    }
+
 }
