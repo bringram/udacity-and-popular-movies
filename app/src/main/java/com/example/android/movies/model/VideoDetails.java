@@ -38,42 +38,35 @@
  *
  */
 
-apply plugin: 'com.android.application'
+package com.example.android.movies.model;
 
-android {
-    compileSdkVersion 27
-    defaultConfig {
-        applicationId "com.example.android.movies"
-        minSdkVersion 21
-        targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+public class VideoDetails {
 
-        buildConfigField("String", "API_KEY", API_KEY)
+    private String key;
+    private String name;
+    private String type;
+
+    public String getKey() {
+        return key;
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+
+    public void setKey(String key) {
+        this.key = key;
     }
-}
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:27.1.0'
-    implementation 'com.android.support:recyclerview-v7:27.1.0'
-    implementation 'com.squareup.picasso:picasso:2.71828'
-    implementation 'com.jakewharton:butterknife:8.8.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.5'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
-    implementation 'com.android.support:support-v4:27.1.1'
-    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+    public String getName() {
+        return name;
+    }
 
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 }
