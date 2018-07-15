@@ -40,8 +40,12 @@
 
 package com.example.android.movies;
 
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -56,11 +60,16 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RatingBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.android.movies.data.MovieDatabase;
+import com.example.android.movies.data.MovieDetailViewModel;
+import com.example.android.movies.data.MovieDetailViewModelFactory;
 import com.example.android.movies.model.Movie;
 import com.example.android.movies.model.UserReview;
 import com.example.android.movies.model.VideoDetails;
@@ -71,6 +80,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import java.io.IOException;
 import java.net.URL;
@@ -105,6 +115,12 @@ public class MovieDetailActivity extends AppCompatActivity implements
     @BindView(R.id.rb_detail_user_rating)
     RatingBar userRatingBar;
 
+    @BindView(R.id.add_favourite_button)
+    Button addFavouriteButton;
+
+    @BindView(R.id.remove_favourite_button)
+    Button removeFavouriteButton;
+
     @BindView(R.id.tv_detail_plot_synopsis)
     TextView plotSynopsisTextView;
 
@@ -126,12 +142,16 @@ public class MovieDetailActivity extends AppCompatActivity implements
     @BindView(R.id.pb_video_loading)
     ProgressBar videosLoadingIndicator;
 
+    Toast toastMessage;
+
     private UserReviewAdapter reviewsListAdapter;
     private VideoAdapter videoListAdapter;
 
     private Movie movie;
     private List<UserReview> cachedReviews;
     private List<VideoDetails> cachedVideos;
+
+    private MovieDatabase movieDb;
 
     private LoaderManager.LoaderCallbacks<List<UserReview>> reviewsLoaderCallbacks =
             new LoaderManager.LoaderCallbacks<List<UserReview>>() {
@@ -308,6 +328,8 @@ public class MovieDetailActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movie_detail);
 
+        movieDb = MovieDatabase.getInstance(getApplicationContext());
+
         ButterKnife.bind(this);
 
         Intent intent = getIntent();
@@ -331,8 +353,50 @@ public class MovieDetailActivity extends AppCompatActivity implements
             userRatingBar.setRating((movie.getVoteAverage() / 10) * 5);
             plotSynopsisTextView.setText(movie.getOverview());
 
-            Picasso.get().load(getResources()
-                    .getString(R.string.base_image_url) + movie.getPosterPath()).into(moviePoster);
+            if (movie.getPosterBitmap() != null) {
+                moviePoster.setImageBitmap(movie.getPosterBitmap());
+            } else {
+                Picasso.get().load(getResources()
+                        .getString(R.string.base_image_url) + movie.getPosterPath())
+                        .into(new Target() {
+
+                            @Override
+                            public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                                movie.setPosterBitmap(bitmap);
+                                moviePoster.setImageBitmap(bitmap);
+                            }
+
+                            @Override
+                            public void onBitmapFailed(Exception e, Drawable errorDrawable) {
+
+                            }
+
+                            @Override
+                            public void onPrepareLoad(Drawable placeHolderDrawable) {
+
+                            }
+                        });
+            }
+
+            addFavouriteButton.setOnClickListener(new View.OnClickListener() {
+
+                @Override
+                public void onClick(View view) {
+                    onAddFavouriteButtonClicked();
+                }
+
+            });
+
+            removeFavouriteButton.setOnClickListener(new View.OnClickListener() {
+
+                @Override
+                public void onClick(View view) {
+                    onRemoveFavouriteButtonClicked();
+                }
+
+            });
+
+            fetchFromDatabase();
 
             reviewsRecyclerView.setHasFixedSize(true);
             reviewsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -356,6 +420,11 @@ public class MovieDetailActivity extends AppCompatActivity implements
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
     public void onClick(VideoDetails video) {
         Intent videoIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube://" + video.getKey()));
         Intent webIntent = new Intent(Intent.ACTION_VIEW,
@@ -366,6 +435,82 @@ public class MovieDetailActivity extends AppCompatActivity implements
         } else {
             startActivity(webIntent);
         }
+    }
+
+    public void onAddFavouriteButtonClicked() {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+
+            @Override
+            public void run() {
+                movieDb.movieDao().insertMovie(movie);
+
+                runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        showRemoveFavouriteButton();
+
+                        showToastMessage("Movie added to favourites");
+                    }
+
+                });
+
+            }
+
+        });
+    }
+
+    public void onRemoveFavouriteButtonClicked() {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+
+            @Override
+            public void run() {
+                movieDb.movieDao().deleteMovie(movie);
+
+                runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        showAddFavouriteButton();
+                        showToastMessage("Movie removed from favourites");
+                    }
+
+                });
+            }
+
+        });
+    }
+
+    private void fetchFromDatabase() {
+        MovieDetailViewModelFactory factory = new MovieDetailViewModelFactory(movieDb, movie.getId());
+        final MovieDetailViewModel viewModel
+                = ViewModelProviders.of(this, factory).get(MovieDetailViewModel.class);
+
+        // To update the database, if details happen to change
+        final MovieDetailActivity context = this;
+
+        viewModel.getMovieData().observe(this, new Observer<Movie>() {
+
+            @Override
+            public void onChanged(@Nullable Movie movie) {
+                viewModel.getMovieData().removeObserver(this);
+
+                if (movie == null) {
+                    showAddFavouriteButton();
+                } else {
+                    showRemoveFavouriteButton();
+                    AppExecutors.getInstance().diskIO().execute(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            movieDb.movieDao().updateMovie(context.getMovie());
+                        }
+
+                    });
+                }
+            }
+
+        });
     }
 
     private void fetchUserReviews() {
@@ -414,6 +559,20 @@ public class MovieDetailActivity extends AppCompatActivity implements
         }
     }
 
+    public Movie getMovie() {
+        return this.movie;
+    }
+
+    private void showAddFavouriteButton() {
+        addFavouriteButton.setVisibility(View.VISIBLE);
+        removeFavouriteButton.setVisibility(View.INVISIBLE);
+    }
+
+    private void showRemoveFavouriteButton() {
+        addFavouriteButton.setVisibility(View.INVISIBLE);
+        removeFavouriteButton.setVisibility(View.VISIBLE);
+    }
+
     private void showReviewsDataView() {
         reviewsErrorMessage.setText(null);
         reviewsErrorMessage.setVisibility(View.INVISIBLE);
@@ -436,6 +595,16 @@ public class MovieDetailActivity extends AppCompatActivity implements
         videosErrorMessage.setText(message);
         videosErrorMessage.setVisibility(View.VISIBLE);
         videosRecyclerView.setVisibility(View.INVISIBLE);
+    }
+
+    private void showToastMessage(String message) {
+        if (toastMessage != null) {
+            toastMessage.cancel();
+        }
+
+        toastMessage = Toast.makeText(this, message,
+                Toast.LENGTH_SHORT);
+        toastMessage.show();
     }
 
 }

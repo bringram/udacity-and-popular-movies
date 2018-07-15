@@ -42,6 +42,7 @@ package com.example.android.movies.util;
 
 public enum ApiRequestType {
 
+    FAVOURITE("favourite"),
     POPULAR("popular"),
     TOP_RATED("top_rated");
 

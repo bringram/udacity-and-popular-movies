@@ -38,45 +38,36 @@
  *
  */
 
-apply plugin: 'com.android.application'
+package com.example.android.movies.data;
 
-android {
-    compileSdkVersion 27
-    defaultConfig {
-        applicationId "com.example.android.movies"
-        minSdkVersion 21
-        targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+import android.arch.lifecycle.LiveData;
+import android.arch.persistence.room.Dao;
+import android.arch.persistence.room.Delete;
+import android.arch.persistence.room.Insert;
+import android.arch.persistence.room.OnConflictStrategy;
+import android.arch.persistence.room.Query;
+import android.arch.persistence.room.Update;
 
-        buildConfigField("String", "API_KEY", API_KEY)
-    }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}
+import com.example.android.movies.model.Movie;
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'android.arch.lifecycle:extensions:1.1.1'
-    implementation 'android.arch.persistence.room:runtime:1.1.1'
-    implementation 'com.android.support:appcompat-v7:27.1.1'
-    implementation 'com.android.support:recyclerview-v7:27.1.1'
-    implementation 'com.squareup.picasso:picasso:2.71828'
-    implementation 'com.jakewharton:butterknife:8.8.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.5'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.5'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.2'
-    implementation 'com.android.support:support-v4:27.1.1'
-    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
-    annotationProcessor 'android.arch.persistence.room:compiler:1.1.1'
+import java.util.List;
 
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+@Dao
+public interface MovieDao {
+
+    @Query("SELECT * FROM movies")
+    LiveData<List<Movie>> loadAllMovies();
+
+    @Query("SELECT * FROM movies WHERE id = :id")
+    LiveData<Movie> loadMovieById(long id);
+
+    @Insert
+    void insertMovie(Movie movie);
+
+    @Update(onConflict = OnConflictStrategy.REPLACE)
+    void updateMovie(Movie movie);
+
+    @Delete
+    void deleteMovie(Movie movie);
+
 }

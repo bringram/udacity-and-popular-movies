@@ -41,6 +41,8 @@
 package com.example.android.movies;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -52,6 +54,7 @@ import android.widget.ImageView;
 import com.example.android.movies.model.Movie;
 import com.squareup.picasso.Picasso;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 import butterknife.BindView;
@@ -108,8 +111,13 @@ public class MovieListAdapter extends RecyclerView.Adapter<MovieListAdapter.Movi
     public void onBindViewHolder(@NonNull MovieListViewHolder holder, int position) {
         Movie movie = movies.get(position);
         Context context = (Context) clickHandler;
-        Picasso.get().load(context.getResources()
-                .getString(R.string.base_image_url) + movie.getPosterPath()).into(holder.imageView);
+        if (movie.getPosterBitmap() != null) {
+            holder.imageView.setImageBitmap(movie.getPosterBitmap());
+        } else {
+            Picasso.get().load(context.getResources()
+                    .getString(R.string.base_image_url) + movie.getPosterPath())
+                    .into(holder.imageView);
+        }
     }
 
     @Override

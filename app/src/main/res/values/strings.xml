@@ -72,4 +72,8 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="review_header">User Reviews</string>
     <string name="video_header">Videos</string>
+    <string name="menu_favourite">Favourite</string>
+    <string name="sort_favourite_title">Favourite Movies</string>
+    <string name="add_favourite_button_label">Add to Favourites</string>
+    <string name="remove_favourite_button_label">Remove from Favourites</string>
 </resources>
