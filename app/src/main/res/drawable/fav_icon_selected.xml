@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ PROJECT LICENSE
   ~
@@ -38,39 +39,12 @@
   ~
   -->
 
-<resources>
-    <string name="app_name">Popular Movies</string>
-    <string name="base_image_url" translatable="false">http://image.tmdb.org/t/p/w342</string>
-
-    <string name="menu_top_rated">Top Rated</string>
-    <string name="menu_popular">Popular</string>
-    <string name="menu_favourite">Favourite</string>
-    <string name="sort_popular_title">Popular Movies</string>
-    <string name="sort_top_rated_title">Top Rated Movies</string>
-    <string name="sort_favourite_title">Favourite Movies</string>
-
-    <string name="movie_poster_content_description">Movie poster</string>
-
-    <string name="current_api_request_type_key" translatable="false">
-        current_api_request_type
-    </string>
-    <string name="cached_api_request_type_key" translatable="false">
-        cached_api_request_type
-    </string>
-    <string name="cached_movies_key" translatable="false">cache_movies</string>
-
-    <string name="no_network_available_error">
-        Network currently unavailable. Please try again later.
-    </string>
-
-    <string name="original_title_label">Original Title</string>
-    <string name="release_date_label">Release Date</string>
-
-    <string name="api_date_format" translatable="false">yyyy-MM-dd</string>
-    <string name="display_date_format" translatable="false">MMMM d, yyyy</string>
-    <string name="review_author_label">Author:</string>
-    <string name="review_header">User Reviews</string>
-    <string name="video_header">Videos</string>
-
-
-</resources>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <path
+        android:fillColor="@color/colorFavorite"
+        android:pathData="M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z"/>
+</vector>

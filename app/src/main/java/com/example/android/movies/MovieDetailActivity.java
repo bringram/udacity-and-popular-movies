@@ -59,8 +59,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RatingBar;
@@ -115,12 +116,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
     @BindView(R.id.rb_detail_user_rating)
     RatingBar userRatingBar;
 
-    @BindView(R.id.add_favourite_button)
-    Button addFavouriteButton;
-
-    @BindView(R.id.remove_favourite_button)
-    Button removeFavouriteButton;
-
     @BindView(R.id.tv_detail_plot_synopsis)
     TextView plotSynopsisTextView;
 
@@ -143,11 +138,13 @@ public class MovieDetailActivity extends AppCompatActivity implements
     ProgressBar videosLoadingIndicator;
 
     Toast toastMessage;
+    Menu menu;
 
     private UserReviewAdapter reviewsListAdapter;
     private VideoAdapter videoListAdapter;
 
     private Movie movie;
+    private boolean isFavMovie = false;
     private List<UserReview> cachedReviews;
     private List<VideoDetails> cachedVideos;
 
@@ -283,7 +280,7 @@ public class MovieDetailActivity extends AppCompatActivity implements
                                     JsonNode rootNode = OBJECT_MAPPER.readTree(jsonResponse);
                                     JsonNode resultsNode = rootNode.at("/results");
                                     List<VideoDetails> videos = OBJECT_MAPPER.readValue(resultsNode.toString(),
-                                            new TypeReference<List<VideoDetails>>(){
+                                            new TypeReference<List<VideoDetails>>() {
                                             });
                                     Log.d(LOG_TAG, "Parsed " + videos.size() + " videos from JSON results");
                                     return videos;
@@ -378,24 +375,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
                         });
             }
 
-            addFavouriteButton.setOnClickListener(new View.OnClickListener() {
-
-                @Override
-                public void onClick(View view) {
-                    onAddFavouriteButtonClicked();
-                }
-
-            });
-
-            removeFavouriteButton.setOnClickListener(new View.OnClickListener() {
-
-                @Override
-                public void onClick(View view) {
-                    onRemoveFavouriteButtonClicked();
-                }
-
-            });
-
             fetchFromDatabase();
 
             reviewsRecyclerView.setHasFixedSize(true);
@@ -420,11 +399,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
     public void onClick(VideoDetails video) {
         Intent videoIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube://" + video.getKey()));
         Intent webIntent = new Intent(Intent.ACTION_VIEW,
@@ -434,6 +408,47 @@ public class MovieDetailActivity extends AppCompatActivity implements
             startActivity(videoIntent);
         } else {
             startActivity(webIntent);
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.detail_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        this.menu = menu;
+        MenuItem favSwitch = menu.findItem(R.id.toggle_menu_item);
+        updateMenuIcon(favSwitch, false);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.toggle_menu_item) {
+            isFavMovie = !item.isChecked();
+            updateMenuIcon(item, true);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void updateMenuIcon(MenuItem menuItem, boolean updateDatabase) {
+        menuItem.setChecked(isFavMovie);
+
+        if (isFavMovie) {
+            menuItem.setIcon(R.drawable.fav_icon_selected);
+            if (updateDatabase) {
+                onAddFavouriteButtonClicked();
+            }
+        } else {
+            menuItem.setIcon(R.drawable.fav_icon_unselected);
+            if (updateDatabase) {
+                onRemoveFavouriteButtonClicked();
+            }
         }
     }
 
@@ -448,8 +463,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
 
                     @Override
                     public void run() {
-                        showRemoveFavouriteButton();
-
                         showToastMessage("Movie added to favourites");
                     }
 
@@ -471,7 +484,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
 
                     @Override
                     public void run() {
-                        showAddFavouriteButton();
                         showToastMessage("Movie removed from favourites");
                     }
 
@@ -496,9 +508,9 @@ public class MovieDetailActivity extends AppCompatActivity implements
                 viewModel.getMovieData().removeObserver(this);
 
                 if (movie == null) {
-                    showAddFavouriteButton();
+                    isFavMovie = false;
                 } else {
-                    showRemoveFavouriteButton();
+                    isFavMovie = true;
                     AppExecutors.getInstance().diskIO().execute(new Runnable() {
 
                         @Override
@@ -507,6 +519,10 @@ public class MovieDetailActivity extends AppCompatActivity implements
                         }
 
                     });
+                }
+
+                if (menu != null) {
+                    updateMenuIcon(menu.findItem(R.id.toggle_menu_item), false);
                 }
             }
 
@@ -561,16 +577,6 @@ public class MovieDetailActivity extends AppCompatActivity implements
 
     public Movie getMovie() {
         return this.movie;
-    }
-
-    private void showAddFavouriteButton() {
-        addFavouriteButton.setVisibility(View.VISIBLE);
-        removeFavouriteButton.setVisibility(View.INVISIBLE);
-    }
-
-    private void showRemoveFavouriteButton() {
-        addFavouriteButton.setVisibility(View.INVISIBLE);
-        removeFavouriteButton.setVisibility(View.VISIBLE);
     }
 
     private void showReviewsDataView() {

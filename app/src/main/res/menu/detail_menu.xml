@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ PROJECT LICENSE
   ~
@@ -38,39 +39,13 @@
   ~
   -->
 
-<resources>
-    <string name="app_name">Popular Movies</string>
-    <string name="base_image_url" translatable="false">http://image.tmdb.org/t/p/w342</string>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <string name="menu_top_rated">Top Rated</string>
-    <string name="menu_popular">Popular</string>
-    <string name="menu_favourite">Favourite</string>
-    <string name="sort_popular_title">Popular Movies</string>
-    <string name="sort_top_rated_title">Top Rated Movies</string>
-    <string name="sort_favourite_title">Favourite Movies</string>
+    <item
+        android:id="@+id/toggle_menu_item"
+        android:checkable="true"
+        android:title=""
+        app:showAsAction="always" />
 
-    <string name="movie_poster_content_description">Movie poster</string>
-
-    <string name="current_api_request_type_key" translatable="false">
-        current_api_request_type
-    </string>
-    <string name="cached_api_request_type_key" translatable="false">
-        cached_api_request_type
-    </string>
-    <string name="cached_movies_key" translatable="false">cache_movies</string>
-
-    <string name="no_network_available_error">
-        Network currently unavailable. Please try again later.
-    </string>
-
-    <string name="original_title_label">Original Title</string>
-    <string name="release_date_label">Release Date</string>
-
-    <string name="api_date_format" translatable="false">yyyy-MM-dd</string>
-    <string name="display_date_format" translatable="false">MMMM d, yyyy</string>
-    <string name="review_author_label">Author:</string>
-    <string name="review_header">User Reviews</string>
-    <string name="video_header">Videos</string>
-
-
-</resources>
+</menu>
